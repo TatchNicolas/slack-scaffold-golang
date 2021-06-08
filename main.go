@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
 
 	"github.com/slack-go/slack"
@@ -33,12 +34,19 @@ func main() {
 	go func() {
 		for envelope := range socketMode.Events {
 			switch envelope.Type {
-			case socketmode.EventTypeSlashCommand:
-				socketMode.Debugf("Got slash command: %v", envelope.Type)
-				fmt.Println(envelope)
 			case socketmode.EventTypeEventsAPI:
-				socketMode.Debugf("Got events_api: %v", envelope.Type)
-				fmt.Println(envelope.Type)
+				// Make sure app subscribes events you want to catch in Event Subscription page of your app setting
+				eventsAPIEvent, err := slackevents.ParseEvent(envelope.Request.Payload, slackevents.OptionNoVerifyToken())
+				if err != nil {
+					fmt.Println("Something went wrong while parsing envelope")
+					return
+				}
+				innerEvent := eventsAPIEvent.InnerEvent
+				switch ev := innerEvent.Data.(type) {
+				case *slackevents.AppMentionEvent:
+					fmt.Println("----------Yay! It worked!----------")
+					fmt.Println(ev)
+				}
 			default:
 				socketMode.Debugf("Skipped: %v", envelope.Type)
 			}
